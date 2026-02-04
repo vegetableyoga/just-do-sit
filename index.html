@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>JUST DO SIT</title>
+    
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#000000">
+
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700;900&family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg: #000; --fg: #fff; --dim: #52525b; --accent: #dc2626; --count-y: #ffff00cc; }
+        * { box-sizing: border-box; margin: 0; padding: 0; touch-action: manipulation; }
+        body { 
+            background: var(--bg); color: var(--fg); font-family: sans-serif;
+            height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 40px 20px; overflow: hidden;
+        }
+        .sporty { font-family: 'Oswald', sans-serif; text-transform: uppercase; font-weight: 900; }
+        .mono { font-family: 'Roboto Mono', monospace; }
+
+        header { text-align: center; width: 100%; }
+        .title { font-size: clamp(3rem, 15vw, 6rem); line-height: 0.85; letter-spacing: -0.05em; }
+        .v-tag { display: inline-block; font-size: 10px; background: var(--fg); color: var(--bg); padding: 2px 10px; border-radius: 20px; margin-top: 15px; letter-spacing: 0.1em; }
+
+        main { position: relative; width: 260px; height: 260px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .circle { position: absolute; width: 100%; height: 100%; border: 1px solid #27272a; border-radius: 50%; }
+        .visual-target { width: 100%; height: 100%; border: 2px solid var(--fg); border-radius: 50%; opacity: 0.1; transform: scale(0.5); transition: transform 0.1s linear; }
+        .straw-box { display: none; width: 12px; height: 100%; background: #18181b; border-radius: 999px; overflow: hidden; position: relative; }
+        .straw-fill { position: absolute; bottom: 0; width: 100%; background: var(--fg); }
+
+        .ui-center { z-index: 10; text-align: center; pointer-events: none; }
+        .count { font-size: 7rem; line-height: 1; color: var(--count-y); }
+        .timer { font-size: 14px; color: var(--dim); letter-spacing: 0.2em; margin-top: 10px; }
+
+        .controls { width: 100%; max-width: 340px; background: #09090b; padding: 15px; border-radius: 8px; border: 1px solid #18181b; }
+        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+        label { font-size: 9px; color: var(--dim); font-weight: 900; margin-bottom: 4px; display: block; letter-spacing: 0.1em; }
+        
+        button, select { width: 100%; padding: 12px; background: #18181b; border: 1px solid #27272a; color: var(--dim); font-size: 10px; border-radius: 4px; outline: none; cursor: pointer; }
+        button.active { background: var(--fg); color: var(--bg); font-weight: bold; border-color: var(--fg); }
+        select { color: var(--fg); }
+
+        input[type="range"] { width: 100%; height: 30px; accent-color: var(--fg); }
+        .start-btn { width: 100%; padding: 20px; font-size: 1.6rem; background: var(--fg); color: var(--bg); border: none; border-radius: 4px; }
+        .start-btn.active { background: var(--accent); color: var(--fg); }
+
+        footer { font-size: 9px; color: #27272a; letter-spacing: 0.1em; text-transform: uppercase; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1 class="sporty title">JUST DO SIT.</h1>
+        <div class="v-tag sporty">Pure Spec v36</div>
+    </header>
+
+    <main>
+        <div id="v-bal" class="circle"><div id="ball-inner" class="visual-target"></div></div>
+        <div id="v-str" class="straw-box"><div id="straw-fill" class="straw-fill"></div></div>
+        <div class="ui-center">
+            <div id="label" class="sporty" style="color:var(--dim); font-size: 1.2rem;">READY</div>
+            <div id="counter" class="sporty count">0</div>
+            <div id="timer" class="mono timer">00:00</div>
+        </div>
+    </main>
+
+    <div class="controls">
+        <div class="row">
+            <div><label>MODE</label><div style="display:flex; gap:4px">
+                <button id="b-bal" class="active sporty" onclick="setMode('balloon')">BALLOON</button>
+                <button id="b-str" class="sporty" onclick="setMode('straw')">STRAW</button>
+            </div></div>
+            <div><label>TIME</label><select id="s-len" class="sporty">
+                <option value="300">5 MIN</option><option value="600" selected>10 MIN</option><option value="1200">20 MIN</option>
+            </select></div>
+        </div>
+        <div class="row" style="grid-template-columns: 1fr;">
+            <div><label>SOUND TYPE</label><select id="s-sound" class="sporty">
+                <option value="digital">DIGITAL</option><option value="india">INDIA (Tingsha)</option><option value="japan">JAPAN (Mokugyo)</option>
+            </select></div>
+        </div>
+        <div style="margin-bottom:10px">
+            <div style="display:flex; justify-content:space-between; font-size:9px; margin-bottom:2px">
+                <span class="sporty" style="color:var(--dim)">BPM</span><span id="bpm-val" class="mono" style="color:var(--fg)">60</span>
+            </div>
+            <input type="range" id="bpm-range" min="40" max="80" value="60">
+        </div>
+        <button id="start-btn" class="sporty start-btn">START SESSION</button>
+    </div>
+
+    <footer class="sporty">© VEGE SATO</footer>
+
+    <script>
+        let audioCtx, timerID, sessionTimerID, wakeLock = null;
+        let isRunning = false, bpm = 60, mode = 'balloon', step = 0, inhale = true, nextTick = 0, timeLeft = 600;
+
+        function setMode(m) {
+            mode = m;
+            document.getElementById('b-bal').className = (m === 'balloon' ? 'active sporty' : 'sporty');
+            document.getElementById('b-str').className = (m === 'straw' ? 'active sporty' : 'sporty');
+            document.getElementById('v-bal').style.display = (m === 'balloon' ? 'block' : 'none');
+            document.getElementById('v-str').style.display = (m === 'straw' ? 'flex' : 'none');
+        }
+
+        const play = {
+            digital(t, l, freq = null) {
+                const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+                o.type = 'sine'; o.frequency.setValueAtTime(freq || (l ? 880 : 330), t);
+                g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(l ? 0.1 : 0.05, t + 0.01);
+                g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+                o.connect(g); g.connect(audioCtx.destination); o.start(t); o.stop(t + 0.4);
+            },
+            india(t, l, decay = 2) {
+                [l ? 2500 : 2000, l ? 5000 : 4000].forEach((f, i) => {
+                    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+                    o.frequency.setValueAtTime(f, t); g.gain.setValueAtTime(0, t);
+                    g.gain.linearRampToValueAtTime(i === 0 ? 0.04 : 0.01, t + 0.005);
+                    g.gain.exponentialRampToValueAtTime(0.001, t + decay);
+                    o.connect(g); g.connect(audioCtx.destination); o.start(t); o.stop(t + decay + 1);
+                });
+            },
+            japan(t, l, freq = null) {
+                const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+                o.type = 'triangle'; o.frequency.setValueAtTime(freq || (l ? 220 : 180), t);
+                g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.2, t + 0.005);
+                g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+                o.connect(g); g.connect(audioCtx.destination); o.start(t); o.stop(t + 0.2);
+            }
+        };
+
+        function finishSignal() {
+            const type = document.getElementById('s-sound').value;
+            const now = audioCtx.currentTime;
+            if (type === 'digital') { [0, 0.2, 0.4].forEach((d, i) => play.digital(now + d, true, 880 + (i * 220))); }
+            else if (type === 'india') { [0, 0.5, 1.2].forEach(d => play.india(now + d, true, 4)); }
+            else if (type === 'japan') { [0, 0.3, 0.6].forEach((d, i) => play.japan(now + d, true, i === 2 ? 260 : 220)); }
+        }
+
+        function scheduler() {
+            if (!isRunning) return;
+            while (nextTick < audioCtx.currentTime + 0.1) {
+                const max = (mode === 'balloon') ? 4 : 8;
+                step++;
+                if (step > max) { step = 1; inhale = !inhale; play[document.getElementById('s-sound').value](nextTick, true); }
+                else { play[document.getElementById('s-sound').value](nextTick, false); }
+                const t = nextTick, s = step, inH = inhale;
+                setTimeout(() => {
+                    document.getElementById('label').innerText = inH ? "INHALE" : "EXHALE";
+                    document.getElementById('counter').innerText = s;
+                    const p = s / max;
+                    if (mode === 'balloon') {
+                        document.getElementById('ball-inner').style.transform = `scale(${inH ? 0.5 + (p * 0.5) : 1.0 - (p * 0.5)})`;
+                        document.getElementById('ball-inner').style.opacity = inH ? 0.1 + (p * 0.7) : 0.8 - (p * 0.7);
+                    } else {
+                        document.getElementById('straw-fill').style.height = `${inH ? p * 100 : (1 - p) * 100}%`;
+                    }
+                }, Math.max(0, (t - audioCtx.currentTime) * 1000));
+                nextTick += 60.0 / bpm;
+            }
+            timerID = requestAnimationFrame(scheduler);
+        }
+
+        async function toggle() {
+            const btn = document.getElementById('start-btn');
+            if (isRunning) {
+                isRunning = false; cancelAnimationFrame(timerID); clearInterval(sessionTimerID);
+                if (wakeLock) { try { await wakeLock.release(); } catch(e){} wakeLock = null; }
+                btn.innerText = "START SESSION"; btn.classList.remove('active');
+            } else {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') await audioCtx.resume();
+                if ('wakeLock' in navigator) try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
+                isRunning = true; step = 0; inhale = true; nextTick = audioCtx.currentTime;
+                timeLeft = parseInt(document.getElementById('s-len').value);
+                btn.innerText = "STOP SESSION"; btn.classList.add('active');
+                scheduler();
+                sessionTimerID = setInterval(() => {
+                    timeLeft--;
+                    const m = Math.floor(timeLeft / 60), s = timeLeft % 60;
+                    document.getElementById('timer').innerText = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+                    if (timeLeft <= 0) { finishSignal(); toggle(); }
+                }, 1000);
+            }
+        }
+        document.getElementById('start-btn').addEventListener('click', toggle);
+        document.getElementById('bpm-range').oninput = (e) => { bpm = e.target.value; document.getElementById('bpm-val').innerText = bpm; };
+    </script>
+</body>
+</html>
