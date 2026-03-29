@@ -16,55 +16,115 @@
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700;900&family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
     <style>
         :root { --bg: #000; --fg: #fff; --dim: #52525b; --accent: #dc2626; --count-y: #ffff00cc; }
-        * { box-sizing: border-box; margin: 0; padding: 0; touch-action: manipulation; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
         body { 
             background: var(--bg); color: var(--fg); font-family: sans-serif;
-            height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 40px 20px; overflow: hidden;
+            height: 100dvh; display: flex; flex-direction: column; align-items: center; 
+            padding: 15px; overflow: hidden; position: fixed; width: 100%;
         }
+
         .sporty { font-family: 'Oswald', sans-serif; text-transform: uppercase; font-weight: 900; }
         .mono { font-family: 'Roboto Mono', monospace; }
 
-        header { text-align: center; width: 100%; }
-        .title { font-size: clamp(3rem, 15vw, 6rem); line-height: 0.85; letter-spacing: -0.05em; }
-        .v-tag { display: inline-block; font-size: 10px; background: var(--fg); color: var(--bg); padding: 2px 10px; border-radius: 20px; margin-top: 15px; letter-spacing: 0.1em; }
+        header { text-align: center; width: 100%; z-index: 100; margin-bottom: 5px; }
+        .title { font-size: clamp(2rem, 10vw, 4rem); line-height: 0.85; letter-spacing: -0.05em; }
+        .v-tag { display: inline-block; font-size: 9px; background: var(--fg); color: var(--bg); padding: 1px 8px; border-radius: 20px; margin-top: 5px; }
 
-        main { position: relative; width: 260px; height: 260px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        main { 
+            position: relative; width: min(200px, 28dvh); height: min(200px, 28dvh); 
+            display: flex; align-items: center; justify-content: center;
+            z-index: 10; pointer-events: none; margin: 5px 0;
+        }
         .circle { position: absolute; width: 100%; height: 100%; border: 1px solid #27272a; border-radius: 50%; }
         .visual-target { width: 100%; height: 100%; border: 2px solid var(--fg); border-radius: 50%; opacity: 0.1; transform: scale(0.5); transition: transform 0.1s linear; }
-        .straw-box { display: none; width: 12px; height: 100%; background: #18181b; border-radius: 999px; overflow: hidden; position: relative; }
+        .straw-box { display: none; width: 10px; height: 100%; background: #18181b; border-radius: 999px; overflow: hidden; position: relative; }
         .straw-fill { position: absolute; bottom: 0; width: 100%; background: var(--fg); }
 
-        .ui-center { z-index: 10; text-align: center; pointer-events: none; }
-        .count { font-size: 7rem; line-height: 1; color: var(--count-y); }
-        .timer { font-size: 14px; color: var(--dim); letter-spacing: 0.2em; margin-top: 10px; }
+        .ui-center { text-align: center; }
+        .count { font-size: 5rem; line-height: 1; color: var(--count-y); }
+        .timer { font-size: 12px; color: var(--dim); letter-spacing: 0.2em; margin-top: 5px; }
 
-        .controls { width: 100%; max-width: 340px; background: #09090b; padding: 15px; border-radius: 8px; border: 1px solid #18181b; }
-        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
-        label { font-size: 9px; color: var(--dim); font-weight: 900; margin-bottom: 4px; display: block; letter-spacing: 0.1em; }
+        .controls { 
+            width: 100%; max-width: 320px; background: #09090b; padding: 12px; 
+            border-radius: 8px; border: 1px solid #18181b; 
+            z-index: 999; position: relative; pointer-events: auto;
+        }
+        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+        label { font-size: 8px; color: var(--dim); font-weight: 900; margin-bottom: 3px; display: block; letter-spacing: 0.1em; }
         
-        button, select { width: 100%; padding: 12px; background: #18181b; border: 1px solid #27272a; color: var(--dim); font-size: 10px; border-radius: 4px; outline: none; cursor: pointer; }
-        button.active { background: var(--fg); color: var(--bg); font-weight: bold; border-color: var(--fg); }
-        select { color: var(--fg); }
+        button, select { 
+            width: 100%; padding: 10px; background: #18181b; border: 1px solid #27272a; 
+            color: var(--fg); font-size: 10px; border-radius: 4px; cursor: pointer;
+            pointer-events: auto; -webkit-appearance: none;
+            outline: none; -webkit-tap-highlight-color: transparent;
+            transition: border-color 0.2s;
+        }
+        button:focus, select:focus { outline: none; border-color: #27272a; }
+        button.active { background: var(--fg); color: var(--bg); font-weight: bold; }
 
-        input[type="range"] { width: 100%; height: 30px; accent-color: var(--fg); }
-        .start-btn { width: 100%; padding: 20px; font-size: 1.6rem; background: var(--fg); color: var(--bg); border: none; border-radius: 4px; }
+        input[type="range"] { width: 100%; height: 24px; accent-color: var(--fg); cursor: pointer; pointer-events: auto; outline: none; }
+        
+        .start-btn { 
+            width: 100%; padding: 15px; font-size: 1.3rem; 
+            background: var(--count-y); color: #fff;
+            border: none; border-radius: 4px; pointer-events: auto;
+            transition: all 0.3s ease; outline: none;
+        }
+        .start-btn:focus { outline: none; }
         .start-btn.active { background: var(--accent); color: var(--fg); }
 
-        footer { font-size: 9px; color: #27272a; letter-spacing: 0.1em; text-transform: uppercase; }
+        .log-section { 
+            width: 100%; max-width: 320px; margin-top: 10px;
+            z-index: 50; position: relative;
+        }
+
+        .stats-row {
+            display: flex; justify-content: space-around;
+            background: #111; padding: 8px; border-radius: 4px; margin-bottom: 10px;
+            border: 1px solid #18181b;
+        }
+        .stat-box { text-align: center; }
+        .stat-label { font-size: 8px; color: var(--dim); letter-spacing: 0.1em; margin-bottom: 2px; }
+        .stat-value { font-size: 1.2rem; color: var(--fg); }
+
+        .log-header { 
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #27272a; padding-bottom: 3px; margin-bottom: 3px;
+        }
+        .log-title { font-size: 9px; color: var(--dim); letter-spacing: 0.1em; }
+        
+        .log-list { 
+            list-style: none; max-height: 70px; overflow-y: auto; 
+            pointer-events: auto; scrollbar-width: thin; scrollbar-color: #333 #000;
+        }
+        .log-list::-webkit-scrollbar { width: 4px; }
+        .log-list::-webkit-scrollbar-track { background: #000; }
+        .log-list::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+
+        .log-item { 
+            display: flex; justify-content: space-between; padding: 6px 0; 
+            border-bottom: 1px solid #09090b; font-size: 10px;
+        }
+        .log-date { color: var(--dim); width: 80px; }
+        .log-info { flex-grow: 1; text-align: left; padding-left: 8px; font-weight: bold; }
+        .log-meta { color: var(--dim); font-size: 8px; text-align: right; }
+
+        footer { font-size: 8px; color: #27272a; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 5px; }
     </style>
 </head>
 <body>
 
     <header>
         <h1 class="sporty title">JUST DO SIT.</h1>
-        <div class="v-tag sporty">Pure Spec v36</div>
+        <div class="v-tag sporty">Pure Spec v37.8</div>
     </header>
 
-    <main>
+    <main id="main-ui">
         <div id="v-bal" class="circle"><div id="ball-inner" class="visual-target"></div></div>
         <div id="v-str" class="straw-box"><div id="straw-fill" class="straw-fill"></div></div>
         <div class="ui-center">
-            <div id="label" class="sporty" style="color:var(--dim); font-size: 1.2rem;">READY</div>
+            <div id="label" class="sporty" style="color:var(--dim); font-size: 1rem;">READY</div>
             <div id="counter" class="sporty count">0</div>
             <div id="timer" class="mono timer">00:00</div>
         </div>
@@ -82,11 +142,13 @@
         </div>
         <div class="row" style="grid-template-columns: 1fr;">
             <div><label>SOUND TYPE</label><select id="s-sound" class="sporty">
-                <option value="digital">DIGITAL</option><option value="india">INDIA (Tingsha)</option><option value="japan">JAPAN (Mokugyo)</option>
+                <option value="digital">DIGITAL</option>
+                <option value="rockDrum">ROCK (DRUM)</option>
+                <option value="japan">JAPAN (Mokugyo)</option>
             </select></div>
         </div>
-        <div style="margin-bottom:10px">
-            <div style="display:flex; justify-content:space-between; font-size:9px; margin-bottom:2px">
+        <div style="margin-bottom:5px">
+            <div style="display:flex; justify-content:space-between; font-size:8px; margin-bottom:2px">
                 <span class="sporty" style="color:var(--dim)">BPM</span><span id="bpm-val" class="mono" style="color:var(--fg)">60</span>
             </div>
             <input type="range" id="bpm-range" min="40" max="80" value="60">
@@ -94,11 +156,61 @@
         <button id="start-btn" class="sporty start-btn">START SESSION</button>
     </div>
 
+    <div class="log-section">
+        <div class="stats-row sporty">
+            <div class="stat-box">
+                <div class="stat-label">TOTAL SITS</div>
+                <div id="stat-count" class="stat-value">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">TOTAL TIME</div>
+                <div id="stat-time" class="stat-value">0 MIN</div>
+            </div>
+        </div>
+
+        <div class="log-header">
+            <span class="log-title sporty">RECENT SESSIONS</span>
+            <button id="clear-logs" style="width: auto; padding: 2px 8px; font-size: 8px; border-color: transparent; background: transparent; color: #27272a;">CLEAR</button>
+        </div>
+        <ul id="log-list" class="log-list mono"></ul>
+    </div>
+
     <footer class="sporty">© VEGE SATO</footer>
 
     <script>
         let audioCtx, timerID, sessionTimerID, wakeLock = null;
         let isRunning = false, bpm = 60, mode = 'balloon', step = 0, inhale = true, nextTick = 0, timeLeft = 600;
+
+        function loadLogs() {
+            const logs = JSON.parse(localStorage.getItem('justDoSitLogs') || '[]');
+            const totalSits = logs.length;
+            const totalMinutes = logs.reduce((sum, log) => sum + (log.minutes || 0), 0);
+            document.getElementById('stat-count').innerText = totalSits;
+            document.getElementById('stat-time').innerText = `${totalMinutes} MIN`;
+            const list = document.getElementById('log-list');
+            list.innerHTML = '';
+            logs.slice(-20).reverse().forEach(log => {
+                const item = document.createElement('li');
+                item.className = 'log-item';
+                item.innerHTML = `<span class="log-date">${log.date}</span><span class="log-info">${log.minutes}MIN</span><span class="log-meta">${log.mode[0].toUpperCase()} / ${log.bpm}BPM</span>`;
+                list.appendChild(item);
+            });
+        }
+
+        function saveLog(minutes) {
+            let logs = JSON.parse(localStorage.getItem('justDoSitLogs') || '[]');
+            const now = new Date();
+            const dateStr = `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+            logs.push({ date: dateStr, minutes: minutes, mode: mode, bpm: bpm });
+            if (logs.length > 50) logs = logs.slice(-50);
+            localStorage.setItem('justDoSitLogs', JSON.stringify(logs));
+            loadLogs();
+        }
+
+        document.getElementById('clear-logs').onclick = (e) => {
+            e.stopPropagation();
+            if(confirm('記録を消去しますか？')) { localStorage.removeItem('justDoSitLogs'); loadLogs(); }
+        };
 
         function setMode(m) {
             mode = m;
@@ -109,27 +221,31 @@
         }
 
         const play = {
+            // DIGITAL: さらにクリアでハッキリとした音へ
             digital(t, l, freq = null) {
                 const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-                o.type = 'sine'; o.frequency.setValueAtTime(freq || (l ? 880 : 330), t);
-                g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(l ? 0.1 : 0.05, t + 0.01);
-                g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
-                o.connect(g); g.connect(audioCtx.destination); o.start(t); o.stop(t + 0.4);
+                o.type = 'sine'; o.frequency.setValueAtTime(freq || (l ? 230 : 220), t);
+                g.gain.setValueAtTime(0, t); 
+                g.gain.linearRampToValueAtTime(l ? 0.80 : 0.55, t + 0.01);
+                g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+                o.connect(g); g.connect(audioCtx.destination); o.start(t); o.stop(t + 0.3);
             },
-            india(t, l, decay = 2) {
-                [l ? 2500 : 2000, l ? 5000 : 4000].forEach((f, i) => {
-                    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-                    o.frequency.setValueAtTime(f, t); g.gain.setValueAtTime(0, t);
-                    g.gain.linearRampToValueAtTime(i === 0 ? 0.04 : 0.01, t + 0.005);
-                    g.gain.exponentialRampToValueAtTime(0.001, t + decay);
-                    o.connect(g); g.connect(audioCtx.destination); o.start(t); o.stop(t + decay + 1);
-                });
+            // ROCK DRUM: 音割れを回避し、重低音を死守する適正レベル
+            rockDrum(t, l) {
+                const osc = audioCtx.createOscillator(), g = audioCtx.createGain();
+                osc.type = 'sine'; osc.frequency.setValueAtTime(l ? 120 : 100, t); 
+                osc.frequency.exponentialRampToValueAtTime(40, t + 0.1);
+                g.gain.setValueAtTime(0, t); 
+                g.gain.linearRampToValueAtTime(l ? 1.10 : 0.85, t + 0.005);
+                g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+                osc.connect(g); g.connect(audioCtx.destination); osc.start(t); osc.stop(t + 0.4);
             },
             japan(t, l, freq = null) {
                 const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-                o.type = 'triangle'; o.frequency.setValueAtTime(freq || (l ? 220 : 180), t);
-                g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.2, t + 0.005);
-                g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+                o.type = 'triangle'; o.frequency.setValueAtTime(freq || (l ? 180 : 150), t);
+                g.gain.setValueAtTime(0, t); 
+                g.gain.linearRampToValueAtTime(0.2, t + 0.005);
+                g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
                 o.connect(g); g.connect(audioCtx.destination); o.start(t); o.stop(t + 0.2);
             }
         };
@@ -137,9 +253,9 @@
         function finishSignal() {
             const type = document.getElementById('s-sound').value;
             const now = audioCtx.currentTime;
-            if (type === 'digital') { [0, 0.2, 0.4].forEach((d, i) => play.digital(now + d, true, 880 + (i * 220))); }
-            else if (type === 'india') { [0, 0.5, 1.2].forEach(d => play.india(now + d, true, 4)); }
-            else if (type === 'japan') { [0, 0.3, 0.6].forEach((d, i) => play.japan(now + d, true, i === 2 ? 260 : 220)); }
+            if (type === 'digital') { [0, 0.2, 0.4].forEach((d, i) => play.digital(now + d, true, 230 + (i * 10))); }
+            else if (type === 'rockDrum') { [0, 0.25, 0.5].forEach(d => play.rockDrum(now + d, true)); }
+            else if (type === 'japan') { [0, 0.3, 0.6].forEach((d, i) => play.japan(now + d, true, i === 2 ? 180 : 150)); }
         }
 
         function scheduler() {
@@ -147,9 +263,10 @@
             while (nextTick < audioCtx.currentTime + 0.1) {
                 const max = (mode === 'balloon') ? 4 : 8;
                 step++;
-                if (step > max) { step = 1; inhale = !inhale; play[document.getElementById('s-sound').value](nextTick, true); }
-                else { play[document.getElementById('s-sound').value](nextTick, false); }
-                const t = nextTick, s = step, inH = inhale;
+                const isAccent = (step > max);
+                play[document.getElementById('s-sound').value](nextTick, isAccent);
+                const t = nextTick, s = (isAccent ? 1 : step), inH = (isAccent ? !inhale : inhale);
+                if (isAccent) { step = 1; inhale = !inhale; }
                 setTimeout(() => {
                     document.getElementById('label').innerText = inH ? "INHALE" : "EXHALE";
                     document.getElementById('counter').innerText = s;
@@ -177,19 +294,23 @@
                 if (audioCtx.state === 'suspended') await audioCtx.resume();
                 if ('wakeLock' in navigator) try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
                 isRunning = true; step = 0; inhale = true; nextTick = audioCtx.currentTime;
-                timeLeft = parseInt(document.getElementById('s-len').value);
+                const durationSeconds = parseInt(document.getElementById('s-len').value);
+                timeLeft = durationSeconds;
                 btn.innerText = "STOP SESSION"; btn.classList.add('active');
                 scheduler();
                 sessionTimerID = setInterval(() => {
                     timeLeft--;
                     const m = Math.floor(timeLeft / 60), s = timeLeft % 60;
                     document.getElementById('timer').innerText = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-                    if (timeLeft <= 0) { finishSignal(); toggle(); }
+                    if (timeLeft <= 0) { finishSignal(); saveLog(Math.floor(durationSeconds / 60)); toggle(); }
                 }, 1000);
             }
         }
+
         document.getElementById('start-btn').addEventListener('click', toggle);
         document.getElementById('bpm-range').oninput = (e) => { bpm = e.target.value; document.getElementById('bpm-val').innerText = bpm; };
+        
+        loadLogs();
     </script>
 </body>
 </html>
