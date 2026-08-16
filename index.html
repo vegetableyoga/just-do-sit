@@ -21,7 +21,7 @@
         body { 
             background: var(--bg); color: var(--fg); font-family: sans-serif;
             height: 100dvh; display: flex; flex-direction: column; align-items: center; 
-            padding: 10px 8px; /* 左右の余白を最小化 */
+            padding: 10px 8px;
             overflow: hidden; position: fixed; width: 100%;
         }
 
@@ -32,7 +32,6 @@
         .title { font-size: clamp(2.5rem, 12vw, 4.5rem); line-height: 0.85; letter-spacing: -0.05em; }
         .v-tag { display: inline-block; font-size: 9px; background: var(--fg); color: var(--bg); padding: 1px 8px; border-radius: 20px; margin-top: 5px; }
 
-        /* メインサークルをひと回り大きく */
         main { 
             position: relative; width: min(250px, 32dvh); height: min(250px, 32dvh); 
             display: flex; align-items: center; justify-content: center;
@@ -47,7 +46,6 @@
         .count { font-size: 5.5rem; line-height: 1; color: var(--count-y); }
         .timer { font-size: 14px; color: var(--dim); letter-spacing: 0.2em; margin-top: 5px; }
 
-        /* コンテンツ幅をワイドに設定 */
         .controls { 
             width: 100%; max-width: 380px; background: #09090b; padding: 12px; 
             border-radius: 8px; border: 1px solid #18181b; 
@@ -117,7 +115,7 @@
 
     <header>
         <h1 class="sporty title">JUST DO SIT.</h1>
-        <div class="v-tag sporty">Pure Spec v37.9</div>
+        <div class="v-tag sporty">Pure Spec v38.0</div>
     </header>
 
     <main id="main-ui">
@@ -178,8 +176,23 @@
     <footer class="sporty">© VEGE SATO</footer>
 
     <script>
-        let audioCtx, timerID, sessionTimerID, wakeLock = null;
+        let audioCtx, compressor, timerID, sessionTimerID, wakeLock = null;
         let isRunning = false, bpm = 60, mode = 'balloon', step = 0, inhale = true, nextTick = 0, timeLeft = 600;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // 音割れ防止用コンプレッサー/リミッター
+                compressor = audioCtx.createDynamicsCompressor();
+                compressor.threshold.setValueAtTime(-6, audioCtx.currentTime);
+                compressor.knee.setValueAtTime(6, audioCtx.currentTime);
+                compressor.ratio.setValueAtTime(12, audioCtx.currentTime);
+                compressor.attack.setValueAtTime(0.003, audioCtx.currentTime);
+                compressor.release.setValueAtTime(0.08, audioCtx.currentTime);
+                compressor.connect(audioCtx.destination);
+            }
+        }
 
         function loadLogs() {
             const logs = JSON.parse(localStorage.getItem('justDoSitLogs') || '[]');
@@ -223,37 +236,56 @@
         const play = {
             digital(t, l, freq = null) {
                 const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-                o.type = 'sine'; o.frequency.setValueAtTime(freq || (l ? 230 : 220), t);
-                g.gain.setValueAtTime(0, t); 
-                g.gain.linearRampToValueAtTime(l ? 0.80 : 0.55, t + 0.01);
-                g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-                o.connect(g); g.connect(audioCtx.destination); o.start(t); o.stop(t + 0.3);
+                o.type = 'sine';
+                o.frequency.setValueAtTime(freq || (l ? 880 : 520), t);
+                g.gain.setValueAtTime(0.0001, t);
+                g.gain.linearRampToValueAtTime(l ? 0.95 : 0.75, t + 0.004);
+                g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+                o.connect(g); g.connect(compressor);
+                o.start(t); o.stop(t + 0.18);
             },
             rockDrum(t, l) {
+                // ボディ（太鼓成分）
                 const osc = audioCtx.createOscillator(), g = audioCtx.createGain();
-                osc.type = 'sine'; osc.frequency.setValueAtTime(l ? 120 : 100, t); 
-                osc.frequency.exponentialRampToValueAtTime(40, t + 0.1);
-                g.gain.setValueAtTime(0, t); 
-                g.gain.linearRampToValueAtTime(l ? 1.10 : 0.85, t + 0.005);
-                g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
-                osc.connect(g); g.connect(audioCtx.destination); osc.start(t); osc.stop(t + 0.4);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(l ? 160 : 130, t);
+                osc.frequency.exponentialRampToValueAtTime(45, t + 0.08);
+                g.gain.setValueAtTime(0.0001, t);
+                g.gain.linearRampToValueAtTime(l ? 1.0 : 0.8, t + 0.003);
+                g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
+                osc.connect(g); g.connect(compressor);
+                osc.start(t); osc.stop(t + 0.25);
+
+                // アタック（抜けを良くするクリック成分）
+                const click = audioCtx.createOscillator(), cg = audioCtx.createGain();
+                click.type = 'triangle';
+                click.frequency.setValueAtTime(l ? 600 : 450, t);
+                cg.gain.setValueAtTime(0.0001, t);
+                cg.gain.linearRampToValueAtTime(l ? 0.45 : 0.3, t + 0.002);
+                cg.gain.exponentialRampToValueAtTime(0.0001, t + 0.03);
+                click.connect(cg); cg.connect(compressor);
+                click.start(t); click.stop(t + 0.03);
             },
             japan(t, l, freq = null) {
                 const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-                o.type = 'triangle'; o.frequency.setValueAtTime(freq || (l ? 180 : 150), t);
-                g.gain.setValueAtTime(0, t); 
-                g.gain.linearRampToValueAtTime(0.2, t + 0.005);
-                g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
-                o.connect(g); g.connect(audioCtx.destination); o.start(t); o.stop(t + 0.2);
+                o.type = 'triangle';
+                const baseFreq = freq || (l ? 620 : 500);
+                o.frequency.setValueAtTime(baseFreq, t);
+                o.frequency.exponentialRampToValueAtTime(baseFreq * 0.7, t + 0.07);
+                g.gain.setValueAtTime(0.0001, t);
+                g.gain.linearRampToValueAtTime(l ? 0.95 : 0.75, t + 0.003);
+                g.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
+                o.connect(g); g.connect(compressor);
+                o.start(t); o.stop(t + 0.15);
             }
         };
 
         function finishSignal() {
             const type = document.getElementById('s-sound').value;
             const now = audioCtx.currentTime;
-            if (type === 'digital') { [0, 0.2, 0.4].forEach((d, i) => play.digital(now + d, true, 230 + (i * 10))); }
-            else if (type === 'rockDrum') { [0, 0.25, 0.5].forEach(d => play.rockDrum(now + d, true)); }
-            else if (type === 'japan') { [0, 0.3, 0.6].forEach((d, i) => play.japan(now + d, true, i === 2 ? 180 : 150)); }
+            if (type === 'digital') { [0, 0.18, 0.36].forEach((d, i) => play.digital(now + d, true, 880 + (i * 120))); }
+            else if (type === 'rockDrum') { [0, 0.2, 0.4].forEach(d => play.rockDrum(now + d, true)); }
+            else if (type === 'japan') { [0, 0.22, 0.44].forEach((d, i) => play.japan(now + d, true, i === 2 ? 700 : 550)); }
         }
 
         function scheduler() {
@@ -288,7 +320,7 @@
                 if (wakeLock) { try { await wakeLock.release(); } catch(e){} wakeLock = null; }
                 btn.innerText = "START SESSION"; btn.classList.remove('active');
             } else {
-                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                initAudio();
                 if (audioCtx.state === 'suspended') await audioCtx.resume();
                 if ('wakeLock' in navigator) try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
                 isRunning = true; step = 0; inhale = true; nextTick = audioCtx.currentTime;
