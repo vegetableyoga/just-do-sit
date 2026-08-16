@@ -115,7 +115,7 @@
 
     <header>
         <h1 class="sporty title">JUST DO SIT.</h1>
-        <div class="v-tag sporty">Pure Spec v38.0</div>
+        <div class="v-tag sporty">Pure Spec v38.1</div>
     </header>
 
     <main id="main-ui">
@@ -183,7 +183,6 @@
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 
-                // 音割れ防止用コンプレッサー/リミッター
                 compressor = audioCtx.createDynamicsCompressor();
                 compressor.threshold.setValueAtTime(-6, audioCtx.currentTime);
                 compressor.knee.setValueAtTime(6, audioCtx.currentTime);
@@ -245,7 +244,6 @@
                 o.start(t); o.stop(t + 0.18);
             },
             rockDrum(t, l) {
-                // ボディ（太鼓成分）
                 const osc = audioCtx.createOscillator(), g = audioCtx.createGain();
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(l ? 160 : 130, t);
@@ -256,7 +254,6 @@
                 osc.connect(g); g.connect(compressor);
                 osc.start(t); osc.stop(t + 0.25);
 
-                // アタック（抜けを良くするクリック成分）
                 const click = audioCtx.createOscillator(), cg = audioCtx.createGain();
                 click.type = 'triangle';
                 click.frequency.setValueAtTime(l ? 600 : 450, t);
@@ -267,16 +264,38 @@
                 click.start(t); click.stop(t + 0.03);
             },
             japan(t, l, freq = null) {
-                const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-                o.type = 'triangle';
-                const baseFreq = freq || (l ? 620 : 500);
-                o.frequency.setValueAtTime(baseFreq, t);
-                o.frequency.exponentialRampToValueAtTime(baseFreq * 0.7, t + 0.07);
+                const base = freq || (l ? 330 : 265);
+
+                // 1. 木魚の胴鳴り（低く落ち着いた空洞の響き）
+                const osc = audioCtx.createOscillator(), g = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(base, t);
                 g.gain.setValueAtTime(0.0001, t);
-                g.gain.linearRampToValueAtTime(l ? 0.95 : 0.75, t + 0.003);
-                g.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
-                o.connect(g); g.connect(compressor);
-                o.start(t); o.stop(t + 0.15);
+                g.gain.linearRampToValueAtTime(l ? 0.95 : 0.75, t + 0.002);
+                g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+                osc.connect(g); g.connect(compressor);
+                osc.start(t); osc.stop(t + 0.16);
+
+                // 2. 空洞の倍音成分（木製の抜け感）
+                const harm = audioCtx.createOscillator(), hg = audioCtx.createGain();
+                harm.type = 'triangle';
+                harm.frequency.setValueAtTime(base * 1.6, t);
+                hg.gain.setValueAtTime(0.0001, t);
+                hg.gain.linearRampToValueAtTime(l ? 0.35 : 0.25, t + 0.002);
+                hg.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+                harm.connect(hg); hg.connect(compressor);
+                harm.start(t); harm.stop(t + 0.08);
+
+                // 3. 撥（ばち）で木を叩くアタック音（ピッチ滑りをなくした硬い打撃）
+                const tap = audioCtx.createOscillator(), tg = audioCtx.createGain();
+                tap.type = 'sine';
+                tap.frequency.setValueAtTime(base * 3.2, t);
+                tap.frequency.exponentialRampToValueAtTime(base * 0.9, t + 0.006);
+                tg.gain.setValueAtTime(0.0001, t);
+                tg.gain.linearRampToValueAtTime(l ? 0.55 : 0.4, t + 0.001);
+                tg.gain.exponentialRampToValueAtTime(0.0001, t + 0.012);
+                tap.connect(tg); tg.connect(compressor);
+                tap.start(t); tap.stop(t + 0.012);
             }
         };
 
@@ -285,7 +304,7 @@
             const now = audioCtx.currentTime;
             if (type === 'digital') { [0, 0.18, 0.36].forEach((d, i) => play.digital(now + d, true, 880 + (i * 120))); }
             else if (type === 'rockDrum') { [0, 0.2, 0.4].forEach(d => play.rockDrum(now + d, true)); }
-            else if (type === 'japan') { [0, 0.22, 0.44].forEach((d, i) => play.japan(now + d, true, i === 2 ? 700 : 550)); }
+            else if (type === 'japan') { [0, 0.22, 0.44].forEach((d, i) => play.japan(now + d, true, i === 2 ? 380 : 310)); }
         }
 
         function scheduler() {
