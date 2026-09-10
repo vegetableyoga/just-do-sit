@@ -72,8 +72,12 @@
         }
         .start-btn.active { background: var(--accent); color: var(--fg); }
 
+        .ios-notice {
+            font-size: 8px; color: #71717a; text-align: center; margin-top: 6px; letter-spacing: 0.05em;
+        }
+
         .log-section { 
-            width: 100%; max-width: 380px; margin-top: 10px;
+            width: 100%; max-width: 380px; margin-top: 8px;
             z-index: 50; position: relative;
         }
 
@@ -113,9 +117,12 @@
 </head>
 <body>
 
+    <!-- iOSマナーモード貫通用の無音オーディオ -->
+    <audio id="silent-audio" loop playsinline preload="auto" src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA"></audio>
+
     <header>
         <h1 class="sporty title">JUST DO SIT.</h1>
-        <div class="v-tag sporty">Pure Spec v38.1</div>
+        <div class="v-tag sporty">Pure Spec v38.2</div>
     </header>
 
     <main id="main-ui">
@@ -152,6 +159,7 @@
             <input type="range" id="bpm-range" min="40" max="80" value="60">
         </div>
         <button id="start-btn" class="sporty start-btn">START SESSION</button>
+        <div class="ios-notice">※ iPhoneで音が出ない場合は本体横の消音モードを解除してください</div>
     </div>
 
     <div class="log-section">
@@ -176,12 +184,14 @@
     <footer class="sporty">© VEGE SATO</footer>
 
     <script>
-        let audioCtx, compressor, timerID, sessionTimerID, wakeLock = null;
+        let audioCtx, compressor, timerIntervalID, sessionTimerID, wakeLock = null;
         let isRunning = false, bpm = 60, mode = 'balloon', step = 0, inhale = true, nextTick = 0, timeLeft = 600;
+        const silentAudio = document.getElementById('silent-audio');
 
         function initAudio() {
             if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContextClass();
                 
                 compressor = audioCtx.createDynamicsCompressor();
                 compressor.threshold.setValueAtTime(-6, audioCtx.currentTime);
@@ -192,6 +202,32 @@
                 compressor.connect(audioCtx.destination);
             }
         }
+
+        // iOS用の完全アンロック（空バッファ再生）
+        function unlockAudioIOS() {
+            if (audioCtx) {
+                const buffer = audioCtx.createBuffer(1, 1, 22050);
+                const source = audioCtx.createBufferSource();
+                source.buffer = buffer;
+                source.connect(audioCtx.destination);
+                source.start(0);
+            }
+        }
+
+        // 画面復帰時の自動再開とWakeLock再取得
+        document.addEventListener('visibilitychange', async () => {
+            if (document.visibilityState === 'visible' && isRunning) {
+                if (audioCtx && audioCtx.state !== 'running') {
+                    try { await audioCtx.resume(); } catch(e){}
+                }
+                if (silentAudio.paused) {
+                    try { await silentAudio.play(); } catch(e){}
+                }
+                if ('wakeLock' in navigator && !wakeLock) {
+                    try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
+                }
+            }
+        });
 
         function loadLogs() {
             const logs = JSON.parse(localStorage.getItem('justDoSitLogs') || '[]');
@@ -266,7 +302,6 @@
             japan(t, l, freq = null) {
                 const base = freq || (l ? 330 : 265);
 
-                // 1. 木魚の胴鳴り（低く落ち着いた空洞の響き）
                 const osc = audioCtx.createOscillator(), g = audioCtx.createGain();
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(base, t);
@@ -276,7 +311,6 @@
                 osc.connect(g); g.connect(compressor);
                 osc.start(t); osc.stop(t + 0.16);
 
-                // 2. 空洞の倍音成分（木製の抜け感）
                 const harm = audioCtx.createOscillator(), hg = audioCtx.createGain();
                 harm.type = 'triangle';
                 harm.frequency.setValueAtTime(base * 1.6, t);
@@ -286,7 +320,6 @@
                 harm.connect(hg); hg.connect(compressor);
                 harm.start(t); harm.stop(t + 0.08);
 
-                // 3. 撥（ばち）で木を叩くアタック音（ピッチ滑りをなくした硬い打撃）
                 const tap = audioCtx.createOscillator(), tg = audioCtx.createGain();
                 tap.type = 'sine';
                 tap.frequency.setValueAtTime(base * 3.2, t);
@@ -307,9 +340,11 @@
             else if (type === 'japan') { [0, 0.22, 0.44].forEach((d, i) => play.japan(now + d, true, i === 2 ? 380 : 310)); }
         }
 
+        // iOSでも止まらない高頻度インターバル・スケジューラー
         function scheduler() {
             if (!isRunning) return;
-            while (nextTick < audioCtx.currentTime + 0.1) {
+            const lookahead = 0.1;
+            while (nextTick < audioCtx.currentTime + lookahead) {
                 const max = (mode === 'balloon') ? 4 : 8;
                 step++;
                 const isAccent = (step > max);
@@ -329,24 +364,30 @@
                 }, Math.max(0, (t - audioCtx.currentTime) * 1000));
                 nextTick += 60.0 / bpm;
             }
-            timerID = requestAnimationFrame(scheduler);
         }
 
         async function toggle() {
             const btn = document.getElementById('start-btn');
             if (isRunning) {
-                isRunning = false; cancelAnimationFrame(timerID); clearInterval(sessionTimerID);
+                isRunning = false; 
+                clearInterval(timerIntervalID); 
+                clearInterval(sessionTimerID);
+                silentAudio.pause();
                 if (wakeLock) { try { await wakeLock.release(); } catch(e){} wakeLock = null; }
                 btn.innerText = "START SESSION"; btn.classList.remove('active');
             } else {
                 initAudio();
+                unlockAudioIOS();
                 if (audioCtx.state === 'suspended') await audioCtx.resume();
+                try { await silentAudio.play(); } catch(e){}
                 if ('wakeLock' in navigator) try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
+                
                 isRunning = true; step = 0; inhale = true; nextTick = audioCtx.currentTime;
                 const durationSeconds = parseInt(document.getElementById('s-len').value);
                 timeLeft = durationSeconds;
                 btn.innerText = "STOP SESSION"; btn.classList.add('active');
-                scheduler();
+                
+                timerIntervalID = setInterval(scheduler, 25);
                 sessionTimerID = setInterval(() => {
                     timeLeft--;
                     const m = Math.floor(timeLeft / 60), s = timeLeft % 60;
